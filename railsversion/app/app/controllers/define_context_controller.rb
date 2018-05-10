@@ -1,0 +1,2 @@
+class DefineContextController < ApplicationController
+end
