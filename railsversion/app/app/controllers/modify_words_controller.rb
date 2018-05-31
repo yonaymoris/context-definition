@@ -1,2 +1,0 @@
-class ModifyWordsController < ApplicationController
-end

@@ -1,5 +1,6 @@
 import subprocess
 import csv
+import os
 
 # dependencies
 # 1 - first word priority
@@ -80,6 +81,14 @@ def tree_parse():
     tree.close()
     dependencies.close()
 
+# check whether the whole sentence is neutral
+def neutral_checkup(sent):
+    flag = True
+    for dep in sent:
+        if dependencies[dep[2]] != 0 and dependencies[dep[2]] != 2:
+            return False
+    return True
+
 # analyse dependencies on positivity and negativity
 def analyse_dep():
     # edit the dependencies for analysis -> a list dep_list with 2 words and the dependency between them
@@ -97,20 +106,12 @@ def analyse_dep():
         #print(dep_list)
 
         if neutral_checkup(dep_list):
-            return "The sentence is neutral."
-            
-        positivity_index = int(coll_dic(filter(dep_list[0][1])))
-        for dep in dep_list:
-            positivity_index = dep_est(dep, positivity_index)
-        return positivity_index
-
-# check whether the whole sentence is neutral
-def neutral_checkup(sent):
-    flag = True
-    for dep in sent:
-        if dependencies[dep[2]] != 0 and dependencies[dep[2]] != 2:
-            return False
-
+            return 2
+        else:
+            positivity_index = int(coll_dic(filter(dep_list[0][1])))
+            for dep in dep_list:
+                positivity_index = dep_est(dep, positivity_index)
+            return positivity_index
 
 # estimation functions for the dependency
 def dep_est(dep, current_index):
@@ -162,22 +163,128 @@ def coll_dic(token):
     else:
         print('Something went wrong...')
 
+#check whether the sentence was analyzed already
+def sentence_history(token):
+    with open('history.csv') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            if row['sentence'] == token.lower():
+                return row['result']
+
+    return False
+
+#output function, that outputs a result, understandable for a user
+def print_output(res):
+    if res == 1:
+        return "positive"
+    elif res == 0:
+        return "negative"
+    else:
+        return "neural"
 
 # receive a sentence from a user and parses it to a syntax tree
-def run_treep():
-    inp = ''
-    while inp == '':
-        inp = input("Enter a string: ")
+def run_treep(sentence):
+    #inp = ''
+    #while inp == '':
+    #    inp = input("Enter a string: ")
+
+    #check whether the sentence was being checked before
+    if sentence_history(sentence) != False:
+        print("The sentence exists in the history.")
+        return print_output(sentence_history(sentence))
+
     i = open("input.txt", "w")
-    i.write(inp)
+    i.write(sentence)
     i.close()
     tree_parse()
-    return analyse_dep()
-    print("Done.")
+
+    clean_to_menu()
+    result = analyse_dep()
+
+    with open(r'history.csv', 'a') as csvfile:
+        fieldnames = ['sentence', 'result']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        #writer.writeheader()
+        writer.writerow({'sentence': sentence.lower(), 'result': result})
+
+    return print_output(result)
+    #return result
+    #print("Done.")
     i.close()
 
-print(run_treep())
+#checks whether a parameter is a digit
+def is_int(s):
+    try:
+        int(s)
+        return True
+    except ValueError:
+        return False
+
+#checks whether the string is empty
+def isNotEmpty(s):
+    return bool(s and s.strip())
+
+#random function that prints out the csv file
+def viewcsv(f):
+    if f == 'dictionary.csv':
+        key = 'word'
+        token = 'pindex'
+    else:
+        key = 'sentence'
+        token = 'result'
+
+    with open(f) as csvfile:
+        reader = csv.DictReader(csvfile)
+        print(key + ', ' + token)
+        print('--------------------')
+        for row in reader:
+            print(row[key] + ' -- ' + print_output(int(row[token])))
+
+def clean_to_menu():
+    os.system('cls' if os.name == 'nt' else 'clear')
+    print("Hello! This is a beta version of a text context definition algorithm. \n Choose one of the next options:")
+    print("1. Analyse a sentence")
+    print("2. View the dictionary")
+    print("3. View the history of sentences analysis")
+    print("4. Exit")
+    print("======================================================")
+
+def console_ui():
+    flag = True
+    while flag:
+        clean_to_menu()
+        s = 0
+        while is_int(s) != True or (int(s) != 1 and int(s) != 2 and int(s) != 3 and int(s) != 4):
+            s = input("Your answer (1,2,3,4): ")
+            if is_int(s) != True or (int(s) != 1 and int(s) != 2 and int(s) != 3 and int(s) != 4):
+                print("You should choose only one out of 3 options!")
+
+        print("======================================================")
+
+        if int(s) == 1:
+            sent = ""
+            while isNotEmpty(sent) == False:
+                sent = input("Input your sentence: ")
+                if isNotEmpty(sent) == False:
+                    print("The sentence can not be empty!")
+            print(run_treep(sent))
+            wait = input("Press any key to continue...")
+        elif int(s) == 2:
+            print("COLLOCATIONS DICTIONARY")
+            viewcsv('dictionary.csv')
+            wait = input("Press any key to continue...")
+        elif int(s) == 3:
+            print("HISTORY")
+            viewcsv('history.csv')
+            wait = input("Press any key to continue...")
+        else:
+            flag = False
+
+console_ui()
+#s = input("Input the string:")
+#print(run_treep(s))
+#print(run_treep())
 #print(coll_dic("happy"))
-d = ['love-2', 'I-1', 'nsubj']
+#d = ['love-2', 'I-1', 'nsubj']
 #print(dep_est(d, 1))
 #print(filter('risk-10'))
